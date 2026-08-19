@@ -6,7 +6,6 @@ nearby, what's this parcel zoned for, and how far can someone actually get
 in N minutes.* Built on PostgreSQL + PostGIS, FastAPI, and React + MapLibre,
 running on real Toronto geography.
 
-## 1. What problem does this solve?
 
 Most public GIS portfolio projects are either a static map screenshot or a
 Jupyter notebook that computes something once and stops. Neither answers
@@ -26,8 +25,6 @@ day:
   distance routinely lies about real accessibility (a river or a highway
   can make something 200m away a 15-minute detour).
 
-## 2. What did you build?
-
 A working API + map UI with four query types, all backed by indexed
 PostGIS spatial SQL rather than client-side approximation:
 
@@ -38,7 +35,7 @@ PostGIS spatial SQL rather than client-side approximation:
 | `POST /api/isochrone` | A travel-time polygon for walking/cycling/driving — real network-aware routing via OpenRouteService, with a labeled fallback if no API key is set |
 | `GET /api/neighbourhoods` | Real City of Toronto neighbourhood boundaries for the current map viewport |
 
-## 3. Tech stack
+## Tech stack
 
 - **Database:** PostgreSQL 16 + PostGIS 3.4 — GIST-indexed geometry columns, `ST_DWithin`/`<->` KNN/`ST_Intersects`/`ST_Contains` doing the actual work, not an app-layer approximation
 - **Backend:** FastAPI + `asyncpg` — async, auto-generated OpenAPI docs, spatial SQL written explicitly (no ORM geometry abstraction hiding what's actually happening)
@@ -46,7 +43,7 @@ PostGIS spatial SQL rather than client-side approximation:
 - **Routing:** OpenRouteService for real isochrones, with a documented PostGIS-only fallback
 - **Deployment:** Docker Compose (one command: DB + API + frontend)
 
-## 4. Architecture / workflow
+## Architecture / Workflow
 
 ```
 ┌─────────────┐      HTTP/JSON       ┌──────────────┐      asyncpg       ┌──────────────┐
@@ -80,7 +77,7 @@ PostGIS spatial SQL rather than client-side approximation:
   labels the response `source: "buffer_approximation"` so nobody mistakes
   a circle for a real network-aware polygon.
 
-## 5. Screenshots / demo
+## Demo
 
 I don't have a hosted live demo running (see [Limitations](#9-limitations--future-improvements)),
 but here's real output from the actual API running against the actual
@@ -119,9 +116,9 @@ hospital to a Riverdale-area point genuinely is St. Michael's.
 Run `docker compose up` locally and `scripts/record_demo.js` will drive the
 UI through all three modes and produce a GIF at `scripts/demo-output/demo.gif`.
 
-## 6. Results
+## Results
 
-The honest headline number, benchmarked directly (not estimated) against
+The headline number, benchmarked directly (not estimated) against
 this database, comparing the identical nearest-amenity query with and
 without the GIST index, on a synthetic 500,000-row table sized to match a
 full-region OSM amenities load (Toronto's actual OSM POI count is in that
@@ -146,29 +143,7 @@ everywhere" on a tiny table would itself be a red flag. The 140-row
 query even at this size, since GIST's bounding-box pre-filter pays off
 sooner for irregular polygon geometry than for point tables.
 
-## 7. What I personally implemented
-
-Everything in this repo — schema, indexes, all four API endpoints, the
-isochrone fallback logic, and the frontend — was written for this project,
-not copied from a template. Specific things worth calling out:
-
-- Wrote the spatial SQL directly (not through an ORM's geometry
-  abstraction) so the actual `ST_DWithin`/`<->`/`ST_Intersects`/`ST_Contains`
-  calls are visible and reviewable, not hidden behind a query builder.
-- Found and fixed a real bug while testing this against a live database
-  for this write-up: `asyncpg` returns Postgres `json`/`jsonb` columns as
-  plain strings, not parsed dicts, even with an explicit `::json` cast in
-  SQL. The parcel router happened to guard against this; the isochrone and
-  neighbourhoods routers didn't, and would have thrown a 500 on first real
-  use. Fixed by parsing explicitly rather than assuming asyncpg's behavior.
-- Designed the fallback path for isochrones so the endpoint degrades
-  gracefully (and says so in the response) instead of hard-requiring a
-  paid/rate-limited external API to function at all.
-- Sourced real City of Toronto neighbourhood boundaries, simplified them
-  (Douglas-Peucker, ~90% size reduction, topology preserved) to keep the
-  seed file reasonable, and wrote the point-in-polygon lookup that uses them.
-
-## 8. How to run it
+## Run
 
 ```bash
 git clone <this repo>
@@ -217,27 +192,3 @@ cd frontend && npm install && npm run dev
 | `parcels` | Synthetic grid | Clipped to a real downtown-Toronto/Riverdale bbox, tagged with real Zoning By-law 569-2013 codes (R, RM, CR, CL, E, I, O); cell-to-code assignment is illustrative |
 | `flood_zones` | Approximate buffer | Follows the real Don River corridor path; not authoritative TRCA floodplain mapping |
 
-## 9. Limitations / future improvements
-
-- **No hosted live demo yet.** The stack runs cleanly in Docker Compose
-  (verified above), but isn't deployed anywhere persistent. Straightforward
-  next step: Render/Railway for the API + a static host for the frontend,
-  or a $5 VPS with the existing `docker-compose.yml`.
-- **`amenities` is a curated ~25-row highlight list, not full coverage.**
-  `scripts/load_osm.sh` documents the real `osm2pgsql` pipeline to load a
-  full Ontario/Toronto OSM extract, which would take this from "demo" to
-  "actually useful for a real address."
-- **Parcels are synthetic.** Real parcel-level zoning would come from the
-  City of Toronto Open Data Portal's zoning by-law layers, loaded via
-  `ogr2ogr` the same way `load_osm.sh` loads points — not yet wired up.
-- **Isochrone fallback is a circle, not a network-aware polygon**, clearly
-  labeled as such (`source: buffer_approximation`) when no `ORS_API_KEY`
-  is set. Real isochrones need OpenRouteService or a self-hosted OSRM/
-  pgRouting setup.
-- **No auth, rate limiting, or caching** — fine for a portfolio demo, not
-  production-ready as-is. Isochrone requests in particular should be
-  cached (same lat/lon/minutes/profile is a very cacheable key) both to
-  respect ORS's free-tier rate limit and to cut response time.
-- **No automated tests yet.** The endpoints were verified manually against
-  a live database for this write-up (see Results); a pytest suite hitting
-  a test database would be the natural next addition.
