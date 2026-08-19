@@ -79,9 +79,6 @@ PostGIS spatial SQL rather than client-side approximation:
 
 ## Demo
 
-I don't have a hosted live demo running (see [Limitations](#9-limitations--future-improvements)),
-but here's real output from the actual API running against the actual
-seeded database — not a mockup:
 
 ```
 GET /api/nearest?lat=43.6552&lon=-79.3762&type=hospital&radius_m=5000&limit=3
@@ -118,7 +115,7 @@ UI through all three modes and produce a GIF at `scripts/demo-output/demo.gif`.
 
 ## Results
 
-The headline number, benchmarked directly (not estimated) against
+The headline number, benchmarked directly against
 this database, comparing the identical nearest-amenity query with and
 without the GIST index, on a synthetic 500,000-row table sized to match a
 full-region OSM amenities load (Toronto's actual OSM POI count is in that
@@ -187,8 +184,8 @@ cd frontend && npm install && npm run dev
 
 | Table | Data | Source |
 |---|---|---|
-| `neighbourhoods` | **Real** — all 140 official City of Toronto neighbourhood boundaries | City of Toronto Open Data, via `jasonicarter/toronto-geojson`; simplified for file size, topology preserved |
-| `amenities` | **Real** — ~25 well-known Toronto POIs at actual coordinates | Hand-curated, not exhaustive — run `scripts/load_osm.sh` for full OSM-scale coverage |
+| `neighbourhoods` |  all 140 official City of Toronto neighbourhood boundaries | City of Toronto Open Data, via `jasonicarter/toronto-geojson`; simplified for file size, topology preserved |
+| `amenities` |  ~25 well-known Toronto POIs at actual coordinates | Hand-curated, not exhaustive — run `scripts/load_osm.sh` for full OSM-scale coverage |
 | `parcels` | Synthetic grid | Clipped to a real downtown-Toronto/Riverdale bbox, tagged with real Zoning By-law 569-2013 codes (R, RM, CR, CL, E, I, O); cell-to-code assignment is illustrative |
 | `flood_zones` | Approximate buffer | Follows the real Don River corridor path; not authoritative TRCA floodplain mapping |
 
